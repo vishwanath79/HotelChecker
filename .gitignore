@@ -106,3 +106,4 @@ gen
 .idea
 *.xml
 /tripadvisor_data.csv
+/Config/

@@ -2,14 +2,17 @@
 
 # Based on forked gist :https://gist.github.com/vishwanath79/eb9e4e4e821b3ae02e2ecadd8326a70a
 
+import argparse
+import re
+import smtplib
 from datetime import datetime
 from time import time
-from lxml import html, etree
-import requests, re
-import os, sys
-import unicodecsv as csv
-import argparse
+
 import colorlog
+import requests
+from lxml import html
+
+from Config import send, rec, key
 
 logger = colorlog.getLogger()
 
@@ -65,11 +68,11 @@ def parse(locality, checkin_date, checkout_date, sort, hotelname):
     }
     logger.info("Downloading search results page")
     page_response = requests.post(url="https://www.tripadvisor.com/Hotels", data=form_data, headers=headers).text
-    #print(page_response)
+    # print(page_response)
     logger.info("Parsing results ")
     parser = html.fromstring(page_response)
     hotel_lists = parser.xpath('//div[contains(@class,"hotel_content easyClear sem")]')
-    #print(hotel_lists)
+    # print(hotel_lists)
     hotel_data = []
     for hotel in hotel_lists:
         XPATH_HOTEL_LINK = './/div[@class="listing_title"]/a/@href'
@@ -96,18 +99,15 @@ def parse(locality, checkin_date, checkout_date, sort, hotelname):
         url = 'http://www.tripadvisor.com' + raw_hotel_link[0] if raw_hotel_link else  None
 
         reviews = re.findall('(\d+\,?\d+)', raw_no_of_reviews[0])[0].replace(',', '') if raw_no_of_reviews else None
-        rank = ''.join(raw_rank) if raw_rank else None
+        #rank = ''.join(raw_rank) if raw_rank else None
         rating = ''.join(raw_rating).replace(' of 5 bubbles', '') if raw_rating else None
         name = ''.join(raw_hotel_name).strip() if raw_hotel_name else None
         hotel_features = ','.join(raw_hotel_features)
-        #print("name is ", name)
-        #price_per_night = ''.join(raw_hotel_price_per_night).encode('utf-8').replace('\n','') if raw_hotel_price_per_night else None
-        price_per_night = ''.join(raw_hotel_price_per_night).replace('\n','') if raw_hotel_price_per_night else None
+
+        price_per_night = ''.join(raw_hotel_price_per_night).replace('\n', '') if raw_hotel_price_per_night else None
         no_of_deals = re.sub('\D+', '', ''.join(raw_no_of_deals)) if raw_no_of_deals else None
         # no_of_deals = re.sub('\D+','',no_of_deals)
         booking_provider = ''.join(raw_booking_provider).strip() if raw_booking_provider else None
-
-
 
         data = {
             'hotel_name': name,
@@ -124,7 +124,30 @@ def parse(locality, checkin_date, checkout_date, sort, hotelname):
 
         }
         hotel_data.append(data)
-    return hotel_data
+    # return hotel_data
+    target = []
+    for row in hotel_data:
+        if row['hotel_name'] == hotelname:
+            # return (row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row["price_per_night"])
+            targethotel = row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row[
+                "price_per_night"]
+            # print(targethotel)
+            # return str(targethotel)
+            target.append(targethotel)
+            boilerplate = "\n----------------------ALL OTHER HOTELS--------------------------------------------------------\n"
+            target.append(boilerplate)
+    # print("---------------------------------------------------------------------------------------------")
+    # print("----------------------ALL OTHER HOTELS--------------------------------------------------------")
+
+    for row in hotel_data:
+        # return (row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ",row["price_per_night"])
+        targethotels = row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row[
+            "price_per_night"]
+        # print(targethotels)
+        target.append(targethotels)
+
+    # print(target)
+    return '\n'.join(''.join(str(t)) for t in target)
 
 
 if __name__ == '__main__':
@@ -133,7 +156,6 @@ if __name__ == '__main__':
     handler = colorlog.StreamHandler()
     handler.setFormatter(colorlog.ColoredFormatter())
     logger.addHandler(handler)
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument('checkin_date', help='Hotel Check In Date (Format: YYYY/MM/DD')
@@ -159,27 +181,16 @@ if __name__ == '__main__':
     hotelname = args.hotelname
     if today < datetime.strptime(checkIn, "%Y/%m/%d") and datetime.strptime(checkIn, "%Y/%m/%d") < datetime.strptime(
             checkOut, "%Y/%m/%d"):
-        data = parse(locality, checkin_date, checkout_date, sort, hotelname)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.ehlo()
+        server.starttls()
+        server.login(send, key)
+        logger.info("Getting news")
+        msg = parse(locality, checkin_date, checkout_date, sort, hotelname)
+        server.sendmail(send, rec, msg.encode('ascii', 'replace'))
+        logger.info("Sending mail")
+        server.quit()
 
-        logger.info("Writing to output file tripadvisor_data.csv")
-        with open('tripadvisor_data.csv', 'wb')as csvfile:
-            fieldnames = ['hotel_name', 'url', 'locality', 'reviews', 'tripadvisor_rating', 'checkIn', 'checkOut',
-                          'price_per_night', 'booking_provider', 'no_of_deals', 'hotel_features']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-
-            for row in data:
-                if row['hotel_name'] == hotelname:
-                    print(row['hotel_name'],"--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row["price_per_night"])
-
-            print("---------------------------------------------------------------------------------------------")
-            print(" ALL OTHER HOTELS")
-
-            for row in data:
-
-                print(row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ",
-                     row["price_per_night"])
-            writer.writerow((row))
 
 
     # checking whether the entered date is already passed
@@ -188,4 +199,3 @@ if __name__ == '__main__':
 
     elif datetime.strptime(checkIn, "%Y/%m/%d") > datetime.strptime(checkOut, "%Y/%m/%d"):
         print("Invalid Checkin date: CheckIn date must be less than checkOut date")
-
