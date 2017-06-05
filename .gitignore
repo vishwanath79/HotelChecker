@@ -105,3 +105,4 @@ gen
 .gitignore
 .idea
 *.xml
+/tripadvisor_data.csv
