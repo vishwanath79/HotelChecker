@@ -102,3 +102,6 @@ ENV/
 *.iml
 out
 gen
+.gitignore
+.idea
+*.xml
