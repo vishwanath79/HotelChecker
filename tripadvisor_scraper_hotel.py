@@ -128,23 +128,16 @@ def parse(locality, checkin_date, checkout_date, sort, hotelname):
     target = []
     for row in hotel_data:
         if row['hotel_name'] == hotelname:
-            # return (row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row["price_per_night"])
             targethotel = row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row[
                 "price_per_night"]
-            # print(targethotel)
-            # return str(targethotel)
             target.append(targethotel)
             boilerplate = "\n----------------------ALL OTHER HOTELS--------------------------------------------------------\n"
             target.append(boilerplate)
 
-        for row in hotel_data:
-        # return (row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ",row["price_per_night"])
+    for row in hotel_data:
         targethotels = row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row[
             "price_per_night"]
-        # print(targethotels)
         target.append(targethotels)
-
-    # print(target)
     return '\n'.join(''.join(str(t)) for t in target)
 
 
