@@ -136,10 +136,8 @@ def parse(locality, checkin_date, checkout_date, sort, hotelname):
             target.append(targethotel)
             boilerplate = "\n----------------------ALL OTHER HOTELS--------------------------------------------------------\n"
             target.append(boilerplate)
-    # print("---------------------------------------------------------------------------------------------")
-    # print("----------------------ALL OTHER HOTELS--------------------------------------------------------")
 
-    for row in hotel_data:
+        for row in hotel_data:
         # return (row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ",row["price_per_night"])
         targethotels = row['hotel_name'], "--", row["checkIn"], "--", row["checkOut"], " PRICE -- ", row[
             "price_per_night"]
